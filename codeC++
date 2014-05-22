@@ -1,0 +1,147 @@
+#include <iostream>
+#include <cstdio>
+#include <cstring>
+using namespace std;
+const int maxn = 15;
+const int HASH = 30007;
+const int SIZE = 1000010;
+typedef long long LL;
+int N,M,maze[maxn][maxn],code[maxn],ch[maxn],ex,ey;
+char b[maxn];
+
+struct Hashmap{
+    int e,first[HASH],next[SIZE];
+    LL state[SIZE],f[SIZE];
+
+    void init(){
+        e = 0;
+        memset(first,-1,sizeof(first));
+    }
+
+    void push(LL st,LL ans){
+        int h = st%HASH;
+        for(int i = first[h];i != -1;i = next[i])
+        if(state[i] == st){
+            f[i] += ans;
+            return;
+        }
+        state[e] = st;
+        f[e] = ans;
+        next[e] = first[h];
+        first[h] = e++;
+    }
+}dp[2];
+
+void update(int *code,int len){
+    for(int i = len;i >= 1;i--)
+        code[i] = code[i-1];
+    code[0] = 0;
+}
+
+void decode(int *code,int len,LL st){
+    for(int i = len;i >= 0;i--){
+        code[i] = st&7;
+        st >>= 3;
+    }
+}
+
+LL encode(int *code,int len){
+    int cnt = 1;
+    memset(ch,-1,sizeof(ch));
+    ch[0] = 0;
+    LL st = 0;
+    for(int i = 0;i <= len;i++){
+        if(ch[code[i]] == -1){
+            ch[code[i]] = cnt++;
+        }
+        code[i] = ch[code[i]];
+        st <<= 3;
+        st |= code[i];
+    }
+    return st;
+}
+
+void dpblank(int i,int j,int now,int pre){
+    int left,up,t;
+    for(int k = 0;k < dp[pre].e;k++){
+        decode(code,M,dp[pre].state[k]);
+        left = code[j-1],up = code[j];
+
+        if(left && up){
+            if(left == up){
+                if(i == ex && j == ey){
+                    code[j-1] = code[j] = 0;
+                    if(j == M)  update(code,M);
+                    dp[now].push(encode(code,M),dp[pre].f[k]);
+                }
+            }
+            else{
+                code[j-1] = code[j] = 0;
+                for(t = 0;t <= M;t++){
+                    if(code[t] == up)   code[t] = left;
+                }
+                if(j == M)  update(code,M);
+                dp[now].push(encode(code,M),dp[pre].f[k]);
+            }
+        }else if((!left && up) ||(left && !up)){
+            if(left) t = left;
+            else    t = up;
+            if(maze[i][j+1]){
+                code[j-1] = 0,code[j] = t;
+                dp[now].push(encode(code,M),dp[pre].f[k]);
+            }
+            if(maze[i+1][j]){
+                code[j-1] = t,code[j] = 0;
+                if(j == M)  update(code,M);
+                dp[now].push(encode(code,M),dp[pre].f[k]);
+            }
+        }else{
+            if(maze[i+1][j] && maze[i][j+1]){
+                code[j-1] = code[j] = 13;
+                dp[now].push(encode(code,M),dp[pre].f[k]);
+            }
+        }
+    }
+}
+
+void dpblock(int i,int j,int now,int pre){
+    for(int k = 0;k < dp[pre].e;k++){
+        decode(code,M,dp[pre].state[k]);
+        code[j-1] = code[j] = 0;
+        if(j == M)  update(code,M);
+        dp[now].push(encode(code,M),dp[pre].f[k]);
+    }
+}
+
+int main()
+{
+    while(scanf("%d%d",&N,&M) != EOF){
+        memset(maze,0,sizeof(maze));
+        ex = 0;
+        for(int i = 1;i <= N;i++){
+            scanf("%s",b+1);
+            for(int j = 1;j <= M;j++)
+                if(b[j] == '.') maze[ex=i][ey=j] = 1;
+        }
+        if(ex == 0){
+            printf("0\n");
+            continue;
+        }
+        int now = 0,pre = 1;
+        dp[now].init();
+        dp[now].push(0,1);
+        for(int i = 1;i <= N;i++){
+            for(int j = 1;j <= M;j++){
+                swap(now,pre);
+                dp[now].init();
+                if(maze[i][j])  dpblank(i,j,now,pre);
+                else            dpblock(i,j,now,pre);
+            }
+        }
+        LL ans = 0;
+        for(int i = 0;i < dp[now].e;i++)
+            ans += dp[now].f[i];
+        printf("%I64d\n",ans);
+    }
+    return 0;
+}
