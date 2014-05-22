@@ -1,0 +1,121 @@
+#include <iostream>
+#include <algorithm>
+#include <cstring>
+#include <string>
+#include <vector>
+using namespace std;
+typedef __int64 lld;
+const int INF = 0x3f3f3f3f;
+const int N = 1e6+100;
+int tot,n,m,code[15];
+lld f[2][N],*cur,*nex;
+vector<string> s;
+struct Hash {
+        struct Node { lld v; int id; Node *next; };
+        Node memo[N],*table[N];
+        int mod;
+        void init() { 
+                memset(table,0,sizeof(table));
+                mod = 1e6+3;
+                tot = 0;
+        }
+        int operator [] (lld x) {
+                int idx = x%mod;
+                for (Node *i = table[idx]; i ; i = i->next) 
+                        if (i->v==x) return i->id;
+                memo[tot] = (Node) {x,tot,table[idx]};
+                table[idx] = &memo[tot];
+                return tot ++;
+        }
+}hash;
+void decode(lld v) {
+        for (int i = 0; i <= m; i ++) code[i] = v>>(i<<1)&3;
+}
+lld work() {
+        cur = f[0]; nex = f[1];
+        memset(f,0,sizeof(f));
+        cur[0] = 1;
+        hash.init();
+        hash[0];
+        int ex,ey;
+        for (int i = 0; i < n; i ++)
+                for (int j = 0; j < m; j ++)
+                        if (s[i][j]!='*') ex = i, ey = j;
+        for (int i = 0; i < n; i ++) {
+                for (int j = 0; j < m; j ++) {
+                        for (int st = 0; st < tot; st ++) if (cur[st]) {
+                                lld v = hash.memo[st].v,nv;
+                                decode(v);
+
+                                if (s[i][j]=='*') {
+                                        if (!code[m] && !code[j]) 
+                                                nex[st] += cur[st];
+                                        continue;
+                                }
+
+                                if (!code[m] && !code[j] && j!=m-1) {
+                                        nv = v^(1<<(j<<1))^(2<<(m<<1));
+                                        nex[hash[nv]] += cur[st];
+                                }
+
+                                if (!code[m] && code[j]) {
+                                        nex[st] += cur[st];
+                                        if (j!=m-1) {
+                                                nv = v^(code[j]<<(m<<1))^(code[j]<<(j<<1));
+                                                nex[hash[nv]] += cur[st];
+                                        }
+                                }
+
+                                if (code[m] && !code[j]) {
+                                        if (j!=m-1)
+                                                nex[st] += cur[st];
+                                        nv = v^(code[m]<<(j<<1))^(code[m]<<(m<<1));
+                                        nex[hash[nv]] += cur[st];
+                                }
+
+                                if (code[m] && code[j]) {
+                                        if (code[m]==2 && code[j]==1) {
+                                                nv = v^(2<<(m<<1))^(1<<(j<<1));
+                                                nex[hash[nv]] += cur[st];
+                                        } else if (code[m]==1 && code[j]==2) {
+                                                if (i==ex && j==ey) {
+                                                        nv = v^(1<<(m<<1))^(2<<(j<<1));
+                                                        nex[hash[nv]] += cur[st];
+                                                }
+                                        } else if (code[m]==1 && code[j]==1) {
+                                                int k,cnt = 0;
+                                                for (k = j+1; k < m; k ++) {
+                                                        if (code[k]==2) cnt --;
+                                                        else if (code[k]==1) cnt ++;
+                                                        if (cnt==-1) break;
+                                                }
+                                                nv = v^(1<<(m<<1))^(1<<(j<<1))^(2<<(k<<1))^(1<<(k<<1));
+                                                nex[hash[nv]] += cur[st];
+                                        } else if (code[m]==2 && code[j]==2) {
+                                                int k,cnt = 0;
+                                                for (k = j-1; k >= 0; k --) {
+                                                        if (code[k]==2) cnt --;
+                                                        else if (code[k]==1) cnt ++;
+                                                        if (cnt==1) break;
+                                                }
+                                                nv = v^(2<<(m<<1))^(2<<(j<<1))^(1<<(k<<1))^(2<<(k<<1));
+                                                nex[hash[nv]] += cur[st];
+                                        } else {
+                                                cout << "something wrong" << endl;
+                                        }
+                                }
+                        }
+                        swap(cur,nex);
+                        for (int i = 0; i < tot; i ++) nex[i] = 0;
+                }
+        }
+        return cur[0];
+}
+int main() {
+        while (cin >> n >> m) {
+                s.resize(n);
+                for (int i = 0; i < n; i ++) cin >> s[i];
+                cout << work() << endl;
+        }
+        return 0;
+}
